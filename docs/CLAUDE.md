@@ -42,13 +42,27 @@ xiaohongshu/
 │   ├── settings.yaml           # 全局配置（不提交）
 │   ├── style_guide.md          # 内容风格指南
 │   └── banned_words.txt        # 违禁词列表
-├── data/
+├── data/                       # 输入数据（只读）
 │   ├── posts/
 │   │   └── all_posts.json      # 主数据集（28 篇笔记）
-│   ├── analytics/
-│   │   └── profile.json        # 账号画像
-│   ├── images/                 # 封面图片
-│   └── generated/              # AI 生成内容
+│   └── analytics/
+│       └── profile.json        # 账号画像
+├── docs/                       # 参考文档
+│   ├── PRD.md                  # 产品需求文档
+│   ├── CLAUDE.md               # AI 助手指南（本文件）
+│   └── reference/              # 手动撰写的参考笔记
+│       ├── 婚姻时机_v1.md
+│       ├── 婚姻时机_v2.md
+│       └── 婚姻时机_发布版.md
+├── output/                     # 产出物（按生命周期）
+│   ├── drafts/                 # AI 生成草稿（待审核）
+│   ├── approved/               # 审核通过（待发布）
+│   │   └── 2026-05-08_标题/
+│   │       ├── content.md      # 正文
+│   │       └── images/         # 封面图
+│   └── published/              # 已发布
+│       └── 2026-05/
+│           └── 2026-05-08_标题/
 ├── src/
 │   ├── config.py               # 配置加载器
 │   ├── analyzer/               # 分析模块
@@ -62,6 +76,13 @@ xiaohongshu/
 │   └── publisher/              # 发布模块（待开发）
 └── scripts/                    # 工具脚本（按需添加）
 ```
+
+**目录设计原则**：
+- `data/` = 输入（采集的数据），只读
+- `output/` = 输出（生成的内容），按生命周期组织：drafts → approved → published
+- `docs/` = 参考文档，人类可读
+- `config/` = 配置，不提交 git
+- 每篇笔记 = 一个文件夹，content.md + images/ 在一起
 
 ## 核心命令
 

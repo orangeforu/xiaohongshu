@@ -57,11 +57,13 @@ class PostParser:
 
         return posts
 
-    def save_post(self, post: XhsPost, filename=None):
+    def save_post(self, post: XhsPost, filename=None, target_dir=None):
         """保存单篇博文为 JSON"""
         if not filename:
             filename = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        filepath = self.posts_dir / filename
+        save_dir = Path(target_dir) if target_dir else self.posts_dir
+        save_dir.mkdir(parents=True, exist_ok=True)
+        filepath = save_dir / filename
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(post.to_dict(), f, ensure_ascii=False, indent=2)
         return filepath

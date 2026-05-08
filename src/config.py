@@ -14,6 +14,14 @@ def load_config():
         config = yaml.safe_load(f)
 
     # 从环境变量覆盖敏感配置
+    if api_key := os.environ.get("LLM_API_KEY"):
+        config["llm"]["api_key"] = api_key
+    if provider := os.environ.get("LLM_PROVIDER"):
+        config["llm"]["provider"] = provider
+    if model := os.environ.get("LLM_MODEL"):
+        config["llm"]["model"] = model
+    if base_url := os.environ.get("LLM_BASE_URL"):
+        config["llm"]["base_url"] = base_url
     if api_key := os.environ.get("ANTHROPIC_API_KEY"):
         config["llm"]["api_key"] = api_key
     if api_key := os.environ.get("OPENAI_API_KEY"):
@@ -41,3 +49,21 @@ def get_data_dir(subdir=None):
         data_dir = data_dir / subdir
     data_dir.mkdir(parents=True, exist_ok=True)
     return data_dir
+
+
+def get_output_dir(subdir=None):
+    """获取产出物目录路径"""
+    output_dir = PROJECT_ROOT / "output"
+    if subdir:
+        output_dir = output_dir / subdir
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir
+
+
+def get_docs_dir(subdir=None):
+    """获取参考文档目录路径"""
+    docs_dir = PROJECT_ROOT / "docs"
+    if subdir:
+        docs_dir = docs_dir / subdir
+    docs_dir.mkdir(parents=True, exist_ok=True)
+    return docs_dir

@@ -13,7 +13,7 @@ if sys.platform == "win32":
 # 确保项目根目录在 path 中
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from src.config import load_config, get_data_dir
+from src.config import load_config, get_data_dir, get_output_dir
 from src.analyzer.post_parser import PostParser
 from src.analyzer.style_extractor import StyleExtractor
 from src.generator.text_gen import TextGenerator
@@ -146,7 +146,7 @@ def cmd_generate(topic=None, count=1, content_type="case_story"):
             publish_date=datetime.now().strftime("%Y-%m-%d %H:%M"),
         )
         parser = PostParser()
-        filepath = parser.save_post(new_post, f"generated_{i+1}.json")
+        filepath = parser.save_post(new_post, f"generated_{i+1}.json", target_dir=gen_dir)
         print(f"\n已保存到: {filepath}")
 
 
