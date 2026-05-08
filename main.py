@@ -18,6 +18,41 @@ from src.analyzer.post_parser import PostParser
 from src.analyzer.style_extractor import StyleExtractor
 from src.generator.text_gen import TextGenerator
 from src.generator.quality_check import QualityChecker
+from src.generator.topic_engine import TopicEngine
+from src.generator.image_gen import ImageGenerator
+from src.publisher.xhs_publisher import run_publisher
+
+
+def _save_as_draft(post, cover_path, content_type):
+    """将生成内容保存为 Markdown + 图片的草稿格式"""
+    from datetime import datetime
+    drafts_dir = get_output_dir("drafts")
+    safe_title = "".join(c for c in post.get("title", "untitled") if c.isalnum() or c in " _-")[:30]
+    folder_name = f"{datetime.now().strftime('%Y-%m-%d')}_{safe_title}"
+    draft_dir = drafts_dir / folder_name
+    draft_dir.mkdir(parents=True, exist_ok=True)
+
+    # 保存 content.md
+    md_content = f"# {post.get('title', '')}\n\n"
+    md_content += f"{post.get('content', '')}\n\n"
+    md_content += f"---\n"
+    md_content += f"标签: {' '.join(post.get('tags', []))}\n"
+    md_content += f"封面文字: {post.get('cover_text', '')}\n"
+    md_content += f"评论引导: {post.get('comment_prompt', '')}\n"
+    md_content += f"类型: {content_type}\n"
+
+    md_path = draft_dir / "content.md"
+    with open(md_path, "w", encoding="utf-8") as f:
+        f.write(md_content)
+
+    # 复制封面图
+    if cover_path and Path(cover_path).exists():
+        images_dir = draft_dir / "images"
+        images_dir.mkdir(exist_ok=True)
+        import shutil
+        shutil.copy(cover_path, images_dir / "cover.png")
+
+    return draft_dir
 
 
 def cmd_import():
@@ -107,6 +142,7 @@ def cmd_generate(topic=None, count=1, content_type="case_story"):
 
     generator = TextGenerator(style_guide=style_guide, profile=profile)
     checker = QualityChecker()
+    image_gen = ImageGenerator()
     gen_dir = get_data_dir("generated")
 
     if not topic:
@@ -149,6 +185,23 @@ def cmd_generate(topic=None, count=1, content_type="case_story"):
         filepath = parser.save_post(new_post, f"generated_{i+1}.json", target_dir=gen_dir)
         print(f"\n已保存到: {filepath}")
 
+        # 生成封面图
+        cover_path = gen_dir / f"generated_{i+1}_cover.png"
+        try:
+            image_gen.generate_cover(
+                title=post.get("title", ""),
+                output_path=cover_path,
+                content_type=content_type,
+            )
+            print(f"封面图已保存到: {cover_path}")
+        except Exception as e:
+            print(f"[警告] 封面图生成失败: {e}")
+            cover_path = None
+
+        # 保存为草稿格式（便于人工审核和发布）
+        draft_dir = _save_as_draft(post, cover_path, content_type)
+        print(f"草稿已保存到: {draft_dir}")
+
 
 def cmd_batch_generate(topics_file, content_type="case_story"):
     """批量生成内容"""
@@ -168,6 +221,23 @@ def cmd_batch_generate(topics_file, content_type="case_story"):
         cmd_generate(topic=topic, content_type=content_type)
 
 
+def cmd_topics(count=30):
+    """自动生成选题"""
+    engine = TopicEngine()
+    topics = engine.generate(count=count)
+    output_path = engine.save(topics)
+
+    print(f"\n已生成 {len(topics)} 个选题，保存到: {output_path}\n")
+    print("=" * 50)
+    for i, t in enumerate(topics[:10], 1):
+        print(f"{i}. {t}")
+    if len(topics) > 10:
+        print(f"... 共 {len(topics)} 个，详见文件")
+    print("=" * 50)
+    print("\n使用方式:")
+    print(f"  python main.py batch-generate {output_path}")
+
+
 def main():
     args = sys.argv[1:]
     if not args:
@@ -182,11 +252,19 @@ def main():
         print("    --type <类型>           内容类型: case_story/relationship_tips/quotes_opinions/hot_topics")
         print("    --count <数量>          生成篇数")
         print("  batch-generate <文件>     批量生成（从选题文件读取）")
+        print("  topics [--count <数量>]   自动生成选题")
+        print("  publish [--dry-run]       发布 output/approved/ 中的内容")
+        print()
+        print("工作流:")
+        print("  crawl → analyze → topics → generate → (人工审核) → publish")
         print()
         print("快速开始:")
         print("  1. python main.py crawl          # 自动从创作者后台采集所有笔记")
         print("  2. python main.py analyze        # 分析账号画像")
-        print("  3. python main.py generate --topic '你的选题'  # 开始创作")
+        print("  3. python main.py topics         # 生成选题")
+        print("  4. python main.py generate --topic '你的选题'  # 生成内容")
+        print("  5. # 人工审核后移动到 output/approved/")
+        print("  6. python main.py publish        # 自动发布")
         return
 
     command = args[0]
@@ -195,6 +273,19 @@ def main():
         cmd_import()
     elif command == "analyze":
         cmd_analyze()
+    elif command == "topics":
+        count = 30
+        i = 1
+        while i < len(args):
+            if args[i] == "--count" and i + 1 < len(args):
+                count = int(args[i + 1])
+                i += 2
+            else:
+                i += 1
+        cmd_topics(count=count)
+    elif command == "publish":
+        dry_run = "--dry-run" in args
+        run_publisher(dry_run=dry_run)
     elif command == "generate":
         topic = None
         count = 1

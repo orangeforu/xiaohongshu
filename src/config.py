@@ -2,9 +2,13 @@
 import os
 import yaml
 from pathlib import Path
+from dotenv import load_dotenv
 
-
+# 加载项目根目录的 .env 文件
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(PROJECT_ROOT / ".env")
+
+
 CONFIG_PATH = PROJECT_ROOT / "config" / "settings.yaml"
 
 

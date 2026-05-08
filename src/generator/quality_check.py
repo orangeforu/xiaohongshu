@@ -7,6 +7,7 @@
 - 原创度达标
 """
 import re
+from difflib import SequenceMatcher
 from src.config import load_banned_words, load_config
 
 
@@ -16,6 +17,83 @@ class QualityChecker:
     def __init__(self):
         self.banned_words = load_banned_words()
         self.config = load_config()
+        self.existing_posts = self._load_existing_posts()
+
+    def _load_existing_posts(self):
+        """加载已有博文用于原创度对比"""
+        try:
+            from src.analyzer.post_parser import PostParser
+            parser = PostParser()
+            posts = parser.load_all_posts()
+            # 只保留有正文的
+            return [p for p in posts if p.title or p.content]
+        except Exception:
+            return []
+
+    def _text_similarity(self, a, b):
+        """计算两段文本的相似度 (0-1)"""
+        if not a or not b:
+            return 0.0
+        return SequenceMatcher(None, a, b).ratio()
+
+    def _jaccard_similarity(self, a, b):
+        """基于字符集合的 Jaccard 相似度，对中文更敏感"""
+        if not a or not b:
+            return 0.0
+        # 取 2-gram 作为特征
+        def ngrams(text, n=2):
+            text = text.strip()
+            return set(text[i:i+n] for i in range(len(text) - n + 1))
+        set_a = ngrams(a)
+        set_b = ngrams(b)
+        if not set_a or not set_b:
+            return 0.0
+        intersection = len(set_a & set_b)
+        union = len(set_a | set_b)
+        return intersection / union if union else 0.0
+
+    def _check_originality(self, title, content):
+        """检查与已有内容的原创度"""
+        issues = []
+        suggestions = []
+        score = 1.0
+
+        if not self.existing_posts:
+            return score, issues, suggestions
+
+        max_title_sim = 0.0
+        max_content_sim = 0.0
+        most_similar_title = ""
+
+        for post in self.existing_posts:
+            # 标题相似度
+            t_sim = self._text_similarity(title, post.title)
+            if t_sim > max_title_sim:
+                max_title_sim = t_sim
+
+            # 正文相似度（用 Jaccard，对局部抄袭更敏感）
+            c_sim = self._jaccard_similarity(content, post.content)
+            if c_sim > max_content_sim:
+                max_content_sim = c_sim
+                most_similar_title = post.title
+
+        # 标题完全匹配或高相似
+        if max_title_sim >= 0.8:
+            issues.append(f"标题与已有笔记高度相似（{max_title_sim:.0%}），请修改")
+            score -= 0.3
+        elif max_title_sim >= 0.6:
+            suggestions.append(f"标题与已有笔记较相似（{max_title_sim:.0%}），建议调整角度")
+            score -= 0.1
+
+        # 正文相似度
+        if max_content_sim >= 0.5:
+            issues.append(f"正文与《{most_similar_title[:20]}...》相似度过高（{max_content_sim:.0%}），需大幅改写")
+            score -= 0.4
+        elif max_content_sim >= 0.35:
+            suggestions.append(f"正文与已有内容有重叠（{max_content_sim:.0%}），建议增加新案例或观点")
+            score -= 0.15
+
+        return score, issues, suggestions
 
     def check(self, post_data):
         """
@@ -78,8 +156,11 @@ class QualityChecker:
             suggestions.append("emoji过多，建议精简")
             score -= 0.05
 
-        # 7. 内容重复度（与已有内容对比）
-        # 简化实现：检查标题是否过于相似
+        # 7. 原创度检查（与已有内容对比）
+        orig_score, orig_issues, orig_suggestions = self._check_originality(title, content)
+        score = max(0, score + orig_score - 1.0)  # orig_score 基准是 1.0
+        issues.extend(orig_issues)
+        suggestions.extend(orig_suggestions)
 
         # 限制最低分数
         score = max(0, score)
