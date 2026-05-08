@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+*.log
+
+# Generated content (regenerable)
+data/generated/*.json
+
+# Secrets (never commit)
+config/settings.yaml
+
+# Debug/diagnostic files
+*.png
+*.html
+data/*.json
+!data/posts/*.json
+!data/posts/*.md
+!data/analytics/*.json
+
+# Claude Code settings
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Playwright
+.playwright/
