@@ -15,19 +15,23 @@ playwright install chromium
 
 # 2. 配置 LLM API Key（编辑 config/settings.yaml 或设置环境变量）
 
-# 3. 采集数据（需要已在浏览器登录小红书创作者后台）
+# 3. 自然语言命令（推荐）
+python main.py 采集                    # 采集后台数据
+python main.py 分析                    # 分析账号画像
+python main.py 生成30个选题             # 生成选题
+python main.py 写一篇关于冷战的案例    # 单篇生成
+python main.py 生成3篇沟通技巧的干货   # 多篇生成
+python main.py 批量生成                 # 批量从 topics.txt 生成
+python main.py 发布                    # 发布已审核内容
+python main.py chat                    # 进入交互对话模式
+
+# 4. 传统命令（功能同上）
 python main.py crawl
-
-# 4. 导入 & 分析
-python main.py import
 python main.py analyze
-
-# 5. AI 生成内容
-python main.py generate --topic "夫妻沟通技巧"
-python main.py generate --topic "冷战背后的真相" --type relationship_tips --count 3
-
-# 6. 批量生成（从选题文件）
+python main.py topics --count 30
+python main.py generate --topic "夫妻沟通技巧" --type case_story
 python main.py batch-generate topics.txt
+python main.py publish
 ```
 
 详细命令说明见 [CLAUDE.md](CLAUDE.md)。
@@ -88,7 +92,7 @@ xiaohongshu/
 - [x] AI 文案生成模块（支持 Kimi / Claude）
 - [x] 质量审核模块
 - [ ] 封面图片生成
-- [ ] 选题引擎
+- [x] 选题引擎（支持模板模式 + LLM智能模式）
 - [ ] 数据看板
 - [ ] 发布调度
 
